@@ -167,7 +167,7 @@ let captchaAnswer = 0;
 
 // Enable submit only when form valid + captcha filled
 function checkContactFormValidity() {
-  contactSubmitBtn.disabled = !contactForm.checkValidity() || captchaField.value.trim() === "";
+  contactSubmitBtn.disabled = captchaField.value.trim() === "";
 }
 
 contactInputs.forEach(input => input.addEventListener("input", checkContactFormValidity));
