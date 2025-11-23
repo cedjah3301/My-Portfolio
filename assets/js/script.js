@@ -158,20 +158,16 @@ for (let i = 0; i < navigationLinks.length; i++) {
   });
 }
 
+'use strict';
+
+// Elements
 const contactForm = document.getElementById("contactForm");
-const contactSubmitBtn = document.getElementById("contactSubmitBtn");
-const contactInputs = contactForm.querySelectorAll(".form-input");
+const contactSubmitBtn = contactForm.querySelector("[data-form-btn]");
+const contactInputs = contactForm.querySelectorAll("[data-form-input]");
 const captchaLabel = document.getElementById("captchaLabel");
 const captchaField = document.getElementById("captchaField");
+
 let captchaAnswer = 0;
-
-// Enable submit only when form valid + captcha filled
-function checkContactFormValidity() {
-  contactSubmitBtn.disabled = !contactForm.checkValidity() || captchaField.value.trim() === "";
-}
-
-contactInputs.forEach(input => input.addEventListener("input", checkContactFormValidity));
-captchaField.addEventListener("input", checkContactFormValidity);
 
 // Generate CAPTCHA
 function generateContactCaptcha() {
@@ -180,15 +176,12 @@ function generateContactCaptcha() {
   const ops = ["+", "-"];
   const op = ops[Math.floor(Math.random() * ops.length)];
 
-  switch(op) {
-    case "+": captchaAnswer = a + b; break;
-    case "-": captchaAnswer = a - b; break;
-  }
-
+  captchaAnswer = op === "+" ? a + b : a - b;
   captchaLabel.innerText = `What is ${a} ${op} ${b}?`;
-}
 
-generateContactCaptcha(); // initialize
+  captchaField.value = "";
+  checkContactFormValidity();
+}
 
 // Toast function
 function showContactToast(message, success = true) {
@@ -213,25 +206,55 @@ function showContactToast(message, success = true) {
   setTimeout(() => toast.remove(), 3500);
 }
 
+// Check form validity + captcha correctness
+function checkContactFormValidity() {
+  // Are all input fields filled and valid?
+  let allFilled = true;
+  contactInputs.forEach(input => {
+    if (!input.checkValidity() || input.value.trim() === "") allFilled = false;
+  });
+
+  // Check captcha correctness
+  const captchaValid = parseInt(captchaField.value) === captchaAnswer;
+
+  // Enable button if everything is valid
+  contactSubmitBtn.disabled = !(allFilled && captchaValid);
+}
+
+// Add input listeners to all form fields
+[...contactInputs].forEach(input => {
+  input.addEventListener("input", checkContactFormValidity);
+});
+
+// Add keyup listener to captcha for smooth real-time check
+captchaField.addEventListener("input", () => {
+  // Only enable button if exact match
+  checkContactFormValidity();
+});
+
 // Form submission
 contactForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+
   if (parseInt(captchaField.value) !== captchaAnswer) {
-    e.preventDefault();
     showContactToast("CAPTCHA incorrect! Try again.", false);
     generateContactCaptcha();
-    captchaField.value = "";
-    checkContactFormValidity();
     return;
   }
 
-  // Allow submission to hidden iframe
   showContactToast("Message sent successfully!", true);
 
-  // Reset form after iframe loads
   const iframe = document.querySelector('iframe[name="hidden_iframe"]');
-  iframe.onload = () => {
+  if (iframe) {
+    iframe.onload = () => {
+      contactForm.reset();
+      generateContactCaptcha();
+      checkContactFormValidity();
+    };
+    contactForm.submit();
+  } else {
     contactForm.reset();
     generateContactCaptcha();
     checkContactFormValidity();
-  };
+  }
 });
